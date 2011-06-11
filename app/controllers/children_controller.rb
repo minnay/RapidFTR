@@ -210,9 +210,6 @@ class ChildrenController < ApplicationController
          redirect_to child_path( @results.first )
        end
      end
-      format.csv do
-        render_as_csv(@results, 'rapidftr_search_results.csv') if @results
-      end
     end
   end
 

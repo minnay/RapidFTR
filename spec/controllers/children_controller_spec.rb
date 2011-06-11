@@ -274,31 +274,44 @@ describe ChildrenController do
 
     end
 
-    it 'sends csv data with the correct content type and file name' do
-      @controller.
-        should_receive(:send_data).
-        with( anything, :filename => 'rapidftr_search_results.csv', :type => 'text/csv' )
-      get( :search, :format => 'csv', :query => 'blah')
-    end
+
 
     describe 'CSV formatting' do
 
       def inject_results( results )
-        Child.stub!(:search).and_return(results)
+        @controller.stub!(:file_basename).and_return "record"
+        if ( results.size == 0)
+          child = stub 'child'
+          child.stub!('[]').with(anything).and_return 1
+          Child.stub!(:get).with(anything).and_return child
+        else
+          results.map do |index, result|
+            Child.stub!(:get).with(index).and_return result
+          end
+        end
       end
 
       def csv_response
-        get( :search, :format => 'csv', :query => 'blah' )
+        get( :export_data, :selections =>
+            {
+              '0' => 'child_1',
+              '1' => 'child_2'
+            },
+            :commit => "Export to CSV" )
         response.body
       end
 
-      def csv_export_data_response
-        get( :export, :format => 'csv', :query => 'blah' )
-        response.body
+      it 'sends csv data with the correct content type and file name' do
+        @controller.
+          should_receive(:send_data).
+          with( anything, :filename => 'record.csv', :type => 'text/csv' )
+        inject_results([])
+        csv_response
       end
 
       it 'should contain the correct column headers based on the defined fields' do
         inject_results([])
+
         first_line = csv_response.split("\n").first
         headers = first_line.split(",")
 
@@ -306,18 +319,18 @@ describe ChildrenController do
       end
 
       it 'should render a row for each result, plus a header row' do
-        inject_results( [
-          Child.new( 'name' => 'Dave' ),
-          Child.new( 'name' => 'Mary' )
-        ] );
+        inject_results(
+          {'child_1' => Child.new( 'name' => 'Dave' ),
+          'child_2' => Child.new( 'name' => 'Mary' )}
+         );
         csv_response.split("\n").length.should == 3
       end
 
       it "should render each record's name and age correctly" do
-        inject_results( [
-          Child.new( 'name' => 'Dave', 'age' => 145, 'unique_identifier' => 'dave_xxx' ),
-          Child.new( 'name' => 'Mary', 'age' => 12, 'unique_identifier' => 'mary_xxx' )
-        ] );
+        inject_results(
+            {'child_1' => Child.new('name' => 'Dave', 'age' => 145, 'unique_identifier' => 'dave_xxx'),
+             'child_2' => Child.new('name' => 'Mary', 'age' => 12, 'unique_identifier' => 'mary_xxx')
+            });
         rows = csv_response.split("\n").map{ |line| line.split(",") }
         rows.shift # skip past header row
         rows.shift.should == ['dave_xxx', 'Dave','145']
