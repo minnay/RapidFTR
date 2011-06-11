@@ -291,13 +291,14 @@ describe ChildrenController do
         end
       end
 
-      def csv_response
+      def csv_response text_case='as_entered'
         get( :export_data, :selections =>
             {
               '0' => 'child_1',
               '1' => 'child_2'
             },
-            :commit => "Export to CSV" )
+            :commit => "Export to CSV",
+            :text_case => text_case)
         response.body
       end
 
@@ -326,15 +327,33 @@ describe ChildrenController do
         csv_response.split("\n").length.should == 3
       end
 
-      it "should render each record's name and age correctly" do
-        inject_results(
-            {'child_1' => Child.new('name' => 'Dave', 'age' => 145, 'unique_identifier' => 'dave_xxx'),
-             'child_2' => Child.new('name' => 'Mary', 'age' => 12, 'unique_identifier' => 'mary_xxx')
-            });
-        rows = csv_response.split("\n").map{ |line| line.split(",") }
-        rows.shift # skip past header row
-        rows.shift.should == ['dave_xxx', 'Dave','145']
-        rows.shift.should == ['mary_xxx','Mary','12']
+      describe "for each record's name and age" do
+        before do
+          inject_results(
+              {'child_1' => Child.new('name' => 'Dave john jack', 'age' => 145, 'unique_identifier' => 'dave_xxx'),
+               'child_2' => Child.new('name' => 'Mary elisabeth carry', 'age' => 12, 'unique_identifier' => 'mary_xxx')
+              });
+        end
+        it "should be rendered correctly as they were entered when text_case is as_entered" do
+          rows = csv_response('as_entered').split("\n").map{ |line| line.split(",") }
+          rows.shift # skip past header row
+          rows.shift.should == ['dave_xxx', 'Dave john jack','145']
+          rows.shift.should == ['mary_xxx','Mary elisabeth carry','12']
+        end
+
+        it "should be rendered correctly as upper case when text_case is upper_case" do
+          rows = csv_response('upper_case').split("\n").map{ |line| line.split(",") }
+          rows.shift # skip past header row
+          rows.shift.should == ['dave_xxx'.upcase, 'Dave john jack'.upcase,'145']
+          rows.shift.should == ['mary_xxx'.upcase, 'Mary elisabeth carry'.upcase,'12']
+        end
+
+        it "should be rendered correctly as Title Case when text_case is title_case" do
+          rows = csv_response('title_case').split("\n").map{ |line| line.split(",") }
+          rows.shift # skip past header row
+          rows.shift.should == ['Dave_xxx', 'Dave John Jack','145']
+          rows.shift.should == ['Mary_xxx', 'Mary Elisabeth Carry','12']
+        end
       end
     end
   end

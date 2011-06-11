@@ -11,7 +11,7 @@ class ChildrenController < ApplicationController
     respond_to do |format|
       format.html # index.html.erb
       format.xml  { render :xml => @children }
-      format.csv  { render_as_csv @children, "all_records_#{Time.now.strftime("%Y%m%d")}.csv" }
+      format.csv  { render_as_csv @children, "all_records_#{Time.now.strftime("%Y%m%d")}.csv", "as_entered" }
       format.json { render :json => @children }
       format.pdf do
         pdf_data = PdfGenerator.new.children_info(@children)
@@ -38,7 +38,7 @@ class ChildrenController < ApplicationController
       format.json { render :json => @child.to_json }
       format.csv do
         child_ids = [@child]
-        export_to_csv(child_ids, current_user_name+"_#{Time.now.strftime("%Y%m%d-%H%M")}.csv")
+        export_to_csv(child_ids, current_user_name+"_#{Time.now.strftime("%Y%m%d-%H%M")}.csv",params[:text_case])
       end
       format.pdf do
         pdf_data = PdfGenerator.new.child_info(@child)
@@ -159,7 +159,7 @@ class ChildrenController < ApplicationController
   end
 
   def export_data
-    selected_records = params["selections"] || {}
+    selected_records = params[:selections] || {}
     if selected_records.empty?
       raise ErrorResponse.bad_request('You must select at least one record to be exported')
     end
@@ -172,7 +172,7 @@ class ChildrenController < ApplicationController
 			pdf_data = PdfGenerator.new.children_info(children)
 			send_pdf(pdf_data, "#{file_basename}.pdf")
     elsif params[:commit] == "Export to CSV"
-      export_to_csv(children, "#{file_basename}.csv")
+      export_to_csv(children, "#{file_basename}.csv", params[:text_case])
     end
   end
 
@@ -187,8 +187,8 @@ class ChildrenController < ApplicationController
     send_pdf(pdf_data, "#{child.unique_identifier}-#{Clock.now.strftime('%Y%m%d-%H%M')}.pdf")
   end
 
-  def export_to_csv children, filename
-    render_as_csv(children, filename)
+  def export_to_csv children, filename, text_case
+    render_as_csv(children, filename, text_case)
   end
 
   private
@@ -213,7 +213,18 @@ class ChildrenController < ApplicationController
     end
   end
 
-  def render_as_csv results_temp, filename
+  def convert_text_case text, text_case
+    case text_case
+      when "upper_case"
+        text.to_s.upcase unless text.nil?
+      when "title_case"
+        (text.to_s.split(" ").map{|word| word.capitalize}).join(" ") unless text.nil?
+      else
+        text
+    end
+  end
+
+  def render_as_csv results_temp, filename, text_case
     field_names = FormSection.all_child_field_names
     field_names.unshift "unique_identifier"
     csv = FasterCSV.generate do |rows|
@@ -222,7 +233,7 @@ class ChildrenController < ApplicationController
       end
       rows << field_names
       results_temp.each do |child|
-          rows << field_names.map { |field_name| child[field_name] }
+          rows << field_names.map { |field_name| convert_text_case child[field_name], text_case }
       end
     end
 
