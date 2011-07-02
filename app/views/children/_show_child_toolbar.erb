@@ -1,3 +1,30 @@
+<script type="text/javascript">
+  function text_case_box_display() {
+     $("#text_case_box").show();
+  }
+  function text_case_box_close() {
+     $("#text_case_box").hide();
+  }
+</script>
+
+<% content_for :javascript do %>
+    <%= javascript_include_tag :defaults, 'switch_case' %>
+<% end %>
+    <div id='text_case_box' class='criteria_menu' style='display:none' >
+      <div class='box-shadow content'>
+        <div style="float:right; margin-left: 6px;">
+          <a class='close-link' onclick="text_case_box_close()"><%= image_tag("dialog-close.png") %></a>
+        </div>
+
+        <ul>
+          <li><%= link_to "Upper Case", child_path(@child, :format => 'csv', :text_case => 'upper_case') %></li>
+          <li><%= link_to "Title Case", child_path(@child, :format => 'csv', :text_case => 'title_case') %></li>
+          <li><%= link_to "As Is", child_path(@child, :format => 'csv', :text_case => 'as_entered') %></li>
+        </ul>
+
+      </div>
+    </div>
+
 <div class="profile-tools">
   <ul>
     <li class="back"><%= link_to 'Back', :back %></li>
@@ -8,7 +35,7 @@
 		<ul class="sub_export_record" >
 			<li><%= link_to "Export to Photo Wall", export_photo_to_pdf_child_path(@child, :format => 'pdf') %></li>
 			<li><%= link_to "Export to PDF", child_path(@child, :format => 'pdf') %></li>
-			<li><%= link_to "Export to CSV", child_path(@child, :format => 'csv') %></li>
+			<li><a onclick="text_case_box_display()">Export to CSV</a></li>
 		</ul>
 	</li>
     <% if !(@child.flag?) %>
